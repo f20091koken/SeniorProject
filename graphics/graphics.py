@@ -19,3 +19,5 @@
 #     # board_state[0][0] = '0001'  # 例として一つのピースを配置
     
 #     return board_state
+
+#aaaa
