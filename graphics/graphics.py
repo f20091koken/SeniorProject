@@ -20,5 +20,3 @@
     
 #     return board_state
 
-#aaaaa
-#test
