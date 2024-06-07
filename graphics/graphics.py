@@ -21,3 +21,21 @@
 #     return board_state
 
 #gnosfd
+import cv2
+import os
+
+# 画像を読み込む
+image_path = r'C:\Users\kairi\Desktop\si-sa-.jpeg'
+image = cv2.imread(image_path)
+
+# 画像が正しく読み込まれたか確認する
+if image is None:
+    print("画像が読み込めませんでした。パスを確認してください。")
+else:
+    print("画像が正しく読み込まれました。")
+
+# 画像を表示する
+cv2.imshow('Image', image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
