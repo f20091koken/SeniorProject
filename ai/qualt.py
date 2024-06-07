@@ -1,104 +1,256 @@
-#ゲームシステム
+# import random
+
+# class QuartoGame:
+#     def __init__(self):
+#         self.board = [[None for _ in range(4)] for _ in range(4)]
+#         self.pieces = self.initialize_pieces()
+#         self.available_pieces = set(self.pieces.keys())
+    
+#     def initialize_pieces(self):
+#         pieces = {}
+#         piece_id = 0
+#         for color in [0, 1]:  # 0: Light, 1: Dark
+#             for shape in [0, 1]:  # 0: Square, 1: Circle
+#                 for height in [0, 1]:  # 0: Short, 1: Tall
+#                     for surface in [0, 1]:  # 0: Solid, 1: Hollow
+#                         pieces[piece_id] = (color, shape, height, surface)
+#                         piece_id += 1
+#         return pieces
+
+#     def piece_to_string(self, piece):
+#         if piece is None:
+#             return "    "
+#         color, shape, height, surface = piece
+#         color_str = "L" if color == 0 else "D"
+#         shape_str = "S" if shape == 0 else "C"
+#         height_str = "S" if height == 0 else "T"
+#         surface_str = "S" if surface == 0 else "H"
+#         return f"{color_str}{shape_str}{height_str}{surface_str}"
+
+#     def display_board(self):
+#         print("    0     1     2     3")
+#         print("  +-----+-----+-----+-----+")
+#         for i, row in enumerate(self.board):
+#             row_str = " | ".join([self.piece_to_string(cell) for cell in row])
+#             print(f"{i} | {row_str} |")
+#             print("  +-----+-----+-----+-----+")
+
+#     def is_winner(self):
+#         # Check rows, columns and diagonals for a winning condition
+#         for i in range(4):
+#             if self.check_line([self.board[i][j] for j in range(4)]) or \
+#                self.check_line([self.board[j][i] for j in range(4)]):
+#                 return True
+#         if self.check_line([self.board[i][i] for i in range(4)]) or \
+#            self.check_line([self.board[i][3-i] for i in range(4)]):
+#             return True
+#         return False
+
+#     def check_line(self, line):
+#         if None in line:
+#             return False
+#         for i in range(4):
+#             if all(p[i] == line[0][i] for p in line):
+#                 return True
+#         return False
+
+#     def make_move(self, position, piece):
+#         x, y = position
+#         self.board[x][y] = self.pieces[piece]
+#         self.available_pieces.remove(piece)
+
+#     def get_best_move(self, piece):
+#         # Simple AI that selects a random valid move
+#         valid_moves = [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]
+#         return random.choice(valid_moves)
+
+#     def available_pieces_to_string(self):
+#         return {self.piece_to_string(self.pieces[piece]) for piece in self.available_pieces}
+
+#     def string_to_piece(self, piece_str):
+#         for piece, attributes in self.pieces.items():
+#             if self.piece_to_string(attributes) == piece_str:
+#                 return piece
+#         return None
+
+#     def play(self):
+#         current_player = "human"
+#         while True:
+#             self.display_board()
+#             available_piece_strings = self.available_pieces_to_string()
+#             if current_player == "human":
+#                 piece_str = input(f"Select a piece from available pieces {available_piece_strings}: ")
+#                 piece = self.string_to_piece(piece_str)
+#                 x = int(input("Select row (0-3): "))
+#                 y = int(input("Select column (0-3): "))
+#                 self.make_move((x, y), piece)
+#                 if self.is_winner():
+#                     self.display_board()
+#                     print("Human wins!")
+#                     break
+#                 current_player = "AI"
+#             else:
+#                 piece = random.choice(list(self.available_pieces))
+#                 move = self.get_best_move(piece)
+#                 self.make_move(move, piece)
+#                 print(f"AI placed piece {self.piece_to_string(self.pieces[piece])} at position {move}")
+#                 if self.is_winner():
+#                     self.display_board()
+#                     print("AI wins!")
+#                     break
+#                 current_player = "human"
+
+# if __name__ == "__main__":
+#     game = QuartoGame()
+#     game.play()
+
+
+import random
+import math
+
 class QuartoGame:
     def __init__(self):
         self.board = [[None for _ in range(4)] for _ in range(4)]
-        self.pieces = [format(i, '04b') for i in range(16)]
-        self.available_pieces = set(self.pieces)
+        self.pieces = self.initialize_pieces()
+        self.available_pieces = set(self.pieces.keys())
+    
+    def initialize_pieces(self):
+        pieces = {}
+        piece_id = 0
+        for color in [0, 1]:  # 0: Light, 1: Dark
+            for shape in [0, 1]:  # 0: Square, 1: Circle
+                for height in [0, 1]:  # 0: Short, 1: Tall
+                    for surface in [0, 1]:  # 0: Solid, 1: Hollow
+                        pieces[piece_id] = (color, shape, height, surface)
+                        piece_id += 1
+        return pieces
+
+    def piece_to_string(self, piece):
+        if piece is None:
+            return "    "
+        color, shape, height, surface = piece
+        color_str = "L" if color == 0 else "D"
+        shape_str = "S" if shape == 0 else "C"
+        height_str = "S" if height == 0 else "T"
+        surface_str = "S" if surface == 0 else "H"
+        return f"{color_str}{shape_str}{height_str}{surface_str}"
 
     def display_board(self):
-        for row in self.board:
-            print(" | ".join(piece if piece is not None else "----" for piece in row))
-            print("-" * 29)
+        print("    0     1     2     3")
+        print("  +-----+-----+-----+-----+")
+        for i, row in enumerate(self.board):
+            row_str = " | ".join([self.piece_to_string(cell) for cell in row])
+            print(f"{i} | {row_str} |")
+            print("  +-----+-----+-----+-----+")
 
-    def is_winning_move(self):
+    def is_winner(self):
+        # Check rows, columns and diagonals for a winning condition
         for i in range(4):
-            if self.check_line([self.board[i][j] for j in range(4)]):
+            if self.check_line([self.board[i][j] for j in range(4)]) or \
+               self.check_line([self.board[j][i] for j in range(4)]):
                 return True
-            if self.check_line([self.board[j][i] for j in range(4)]):
-                return True
-        if self.check_line([self.board[i][i] for i in range(4)]):
-            return True
-        if self.check_line([self.board[i][3 - i] for i in range(4)]):
+        if self.check_line([self.board[i][i] for i in range(4)]) or \
+           self.check_line([self.board[i][3-i] for i in range(4)]):
             return True
         return False
 
     def check_line(self, line):
         if None in line:
             return False
-        attributes = [0, 0, 0, 0]
-        for piece in line:
-            for i in range(4):
-                attributes[i] |= (int(piece[i]) << i)
-        return any(attr == 15 or attr == 0 for attr in attributes)
+        for i in range(4):
+            if all(p[i] == line[0][i] for p in line):
+                return True
+        return False
 
-    def make_move(self, row, col, piece):
-        self.board[row][col] = piece
+    def make_move(self, position, piece):
+        x, y = position
+        self.board[x][y] = self.pieces[piece]
         self.available_pieces.remove(piece)
 
-    def get_available_pieces(self):
-        return list(self.available_pieces)
+    def get_best_move(self, piece):
+        best_score = -math.inf
+        best_move = None
+        for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
+            self.make_move(move, piece)
+            score = self.minimax(0, False, -math.inf, math.inf)
+            self.undo_move(move, piece)
+            if score > best_score:
+                best_score = score
+                best_move = move
+        return best_move
 
-    def get_available_moves(self):
-        moves = []
-        for i in range(4):
-            for j in range(4):
-                if self.board[i][j] is None:
-                    moves.append((i, j))
-        return moves
+    def minimax(self, depth, is_maximizing, alpha, beta):
+        if self.is_winner():
+            return 1 if is_maximizing else -1
+        if not any(None in row for row in self.board):
+            return 0
+        
+        if is_maximizing:
+            max_eval = -math.inf
+            for piece in self.available_pieces:
+                for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
+                    self.make_move(move, piece)
+                    eval = self.minimax(depth + 1, False, alpha, beta)
+                    self.undo_move(move, piece)
+                    max_eval = max(max_eval, eval)
+                    alpha = max(alpha, eval)
+                    if beta <= alpha:
+                        break
+            return max_eval
+        else:
+            min_eval = math.inf
+            for piece in self.available_pieces:
+                for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
+                    self.make_move(move, piece)
+                    eval = self.minimax(depth + 1, True, alpha, beta)
+                    self.undo_move(move, piece)
+                    min_eval = min(min_eval, eval)
+                    beta = min(beta, eval)
+                    if beta <= alpha:
+                        break
+            return min_eval
 
+    def undo_move(self, position, piece):
+        x, y = position
+        self.board[x][y] = None
+        self.available_pieces.add(piece)
 
-#プレイヤー処理
-def get_player_move(game):
-    available_moves = game.get_available_moves()
-    move = None
-    while move not in available_moves:
-        try:
-            row = int(input("Choose row (0-3): "))
-            col = int(input("Choose column (0-3): "))
-            move = (row, col)
-            if move not in available_moves:
-                print("Invalid move. Try again.")
-        except ValueError:
-            print("Invalid input. Please enter numbers between 0 and 3.")
-    return move
+    def available_pieces_to_string(self):
+        return {self.piece_to_string(self.pieces[piece]) for piece in self.available_pieces}
 
-def get_player_piece(game):
-    available_pieces = game.get_available_pieces()
-    piece = None
-    while piece not in available_pieces:
-        piece = input(f"Choose a piece from {available_pieces}: ")
-        if piece not in available_pieces:
-            print("Invalid piece. Try again.")
-    return piece
+    def string_to_piece(self, piece_str):
+        for piece, attributes in self.pieces.items():
+            if self.piece_to_string(attributes) == piece_str:
+                return piece
+        return None
 
-#ゲーム実行
-def play_game():
-    game = QuartoGame()
-    current_player = 1
-
-    while True:
-        print(f"Player {current_player}'s turn")
-        game.display_board()
-
-        if not game.get_available_moves():
-            print("It's a draw!")
-            break
-
-        if game.is_winning_move():
-            print(f"Player {3 - current_player} wins!")
-            break
-
-        piece_to_place = get_player_piece(game)
-        move = get_player_move(game)
-        game.make_move(move[0], move[1], piece_to_place)
-
-        if game.is_winning_move():
-            game.display_board()
-            print(f"Player {current_player} wins!")
-            break
-
-        current_player = 3 - current_player
+    def play(self):
+        current_player = "human"
+        while True:
+            self.display_board()
+            available_piece_strings = self.available_pieces_to_string()
+            if current_player == "human":
+                piece_str = input(f"Select a piece from available pieces {available_piece_strings}: ")
+                piece = self.string_to_piece(piece_str)
+                x = int(input("Select row (0-3): "))
+                y = int(input("Select column (0-3): "))
+                self.make_move((x, y), piece)
+                if self.is_winner():
+                    self.display_board()
+                    print("Human wins!")
+                    break
+                current_player = "AI"
+            else:
+                piece = random.choice(list(self.available_pieces))
+                move = self.get_best_move(piece)
+                self.make_move(move, piece)
+                print(f"AI placed piece {self.piece_to_string(self.pieces[piece])} at position {move}")
+                if self.is_winner():
+                    self.display_board()
+                    print("AI wins!")
+                    break
+                current_player = "human"
 
 if __name__ == "__main__":
-    play_game()
-
+    game = QuartoGame()
+    game.play()
