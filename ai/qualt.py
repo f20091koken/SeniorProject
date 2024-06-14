@@ -113,7 +113,7 @@ class QuartoGame:
         self.board = [[None for _ in range(4)] for _ in range(4)]
         self.pieces = self.initialize_pieces()
         self.available_pieces = set(self.pieces.keys())
-    
+
     def initialize_pieces(self):
         pieces = {}
         piece_id = 0
@@ -179,18 +179,18 @@ class QuartoGame:
                 best_move = move
         return best_move
 
-    def minimax(self, depth, is_maximizing, alpha, beta):
-        if self.is_winner():
-            return 1 if is_maximizing else -1
+    def minimax(self, depth, is_maximizing, alpha, beta, max_depth=3):
+        if depth >= max_depth or self.is_winner():
+            return self.evaluate_board(is_maximizing)
         if not any(None in row for row in self.board):
             return 0
-        
+
         if is_maximizing:
             max_eval = -math.inf
-            for piece in self.available_pieces:
-                for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
+            for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
+                for piece in self.available_pieces:
                     self.make_move(move, piece)
-                    eval = self.minimax(depth + 1, False, alpha, beta)
+                    eval = self.minimax(depth + 1, False, alpha, beta, max_depth)
                     self.undo_move(move, piece)
                     max_eval = max(max_eval, eval)
                     alpha = max(alpha, eval)
@@ -199,10 +199,10 @@ class QuartoGame:
             return max_eval
         else:
             min_eval = math.inf
-            for piece in self.available_pieces:
-                for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
+            for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
+                for piece in self.available_pieces:
                     self.make_move(move, piece)
-                    eval = self.minimax(depth + 1, True, alpha, beta)
+                    eval = self.minimax(depth + 1, True, alpha, beta, max_depth)
                     self.undo_move(move, piece)
                     min_eval = min(min_eval, eval)
                     beta = min(beta, eval)
@@ -224,31 +224,55 @@ class QuartoGame:
                 return piece
         return None
 
+    def evaluate_board(self, is_maximizing):
+        if self.is_winner():
+            return 1 if is_maximizing else -1
+        return 0
+
+    def get_best_piece(self):
+        best_score = -math.inf
+        best_piece = None
+        for piece in self.available_pieces:
+            score = self.evaluate_piece(piece)
+            if score > best_score:
+                best_score = score
+                best_piece = piece
+        return best_piece
+
+    def evaluate_piece(self, piece):
+        # Simple heuristic for piece evaluation
+        # Can be customized to be more sophisticated
+        return random.random()
+
     def play(self):
         current_player = "human"
+        selected_piece = None
+
         while True:
             self.display_board()
             available_piece_strings = self.available_pieces_to_string()
             if current_player == "human":
-                piece_str = input(f"Select a piece from available pieces {available_piece_strings}: ")
-                piece = self.string_to_piece(piece_str)
-                x = int(input("Select row (0-3): "))
-                y = int(input("Select column (0-3): "))
-                self.make_move((x, y), piece)
-                if self.is_winner():
-                    self.display_board()
-                    print("Human wins!")
-                    break
+                if selected_piece is not None:
+                    x = int(input("Select row (0-3): "))
+                    y = int(input("Select column (0-3): "))
+                    self.make_move((x, y), selected_piece)
+                    if self.is_winner():
+                        self.display_board()
+                        print("Human wins!")
+                        break
+                selected_piece_str = input(f"Select a piece for AI from available pieces {available_piece_strings}: ")
+                selected_piece = self.string_to_piece(selected_piece_str)
                 current_player = "AI"
             else:
-                piece = random.choice(list(self.available_pieces))
-                move = self.get_best_move(piece)
-                self.make_move(move, piece)
-                print(f"AI placed piece {self.piece_to_string(self.pieces[piece])} at position {move}")
+                move = self.get_best_move(selected_piece)
+                self.make_move(move, selected_piece)
+                print(f"AI placed piece {self.piece_to_string(self.pieces[selected_piece])} at position {move}")
                 if self.is_winner():
                     self.display_board()
                     print("AI wins!")
                     break
+                selected_piece = self.get_best_piece()  # AI selects a piece for the human
+                print(f"AI selected piece {self.piece_to_string(self.pieces[selected_piece])} for human to place")
                 current_player = "human"
 
 if __name__ == "__main__":
