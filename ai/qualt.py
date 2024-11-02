@@ -1,491 +1,223 @@
-# import random
-# import math
-
-# class QuartoGame:
-#     def __init__(self):
-#         self.board = [[None for _ in range(4)] for _ in range(4)]
-#         self.pieces = self.initialize_pieces()
-#         self.available_pieces = set(self.pieces.keys())
-
-#     def initialize_pieces(self):
-#         pieces = {}
-#         piece_id = 0
-#         for color in [0, 1]:  # 0: Light, 1: Dark
-#             for shape in [0, 1]:  # 0: Square, 1: Circle
-#                 for height in [0, 1]:  # 0: Short, 1: Tall
-#                     for surface in [0, 1]:  # 0: Solid, 1: Hollow
-#                         pieces[piece_id] = (color, shape, height, surface)
-#                         piece_id += 1
-#         return pieces
-
-#     def piece_to_string(self, piece):
-#         if piece is None:
-#             return "    "
-#         color, shape, height, surface = piece
-#         color_str = "L" if color == 0 else "D"
-#         shape_str = "S" if shape == 0 else "C"
-#         height_str = "S" if height == 0 else "T"
-#         surface_str = "S" if surface == 0 else "H"
-#         return f"{color_str}{shape_str}{height_str}{surface_str}"
-
-#     def display_board(self):
-#         print("    0     1     2     3")
-#         print("  +-----+-----+-----+-----+")
-#         for i, row in enumerate(self.board):
-#             row_str = " | ".join([self.piece_to_string(cell) for cell in row])
-#             print(f"{i} | {row_str} |")
-#             print("  +-----+-----+-----+-----+")
-
-#     def is_winner(self):
-#         # Check rows, columns and diagonals for a winning condition
-#         for i in range(4):
-#             if self.check_line([self.board[i][j] for j in range(4)]) or \
-#                self.check_line([self.board[j][i] for j in range(4)]):
-#                 return True
-#         if self.check_line([self.board[i][i] for i in range(4)]) or \
-#            self.check_line([self.board[i][3-i] for i in range(4)]):
-#             return True
-#         return False
-
-#     def check_line(self, line):
-#         if None in line:
-#             return False
-#         for i in range(4):
-#             if all(p[i] == line[0][i] for p in line):
-#                 return True
-#         return False
-
-#     def make_move(self, position, piece):
-#         x, y = position
-#         self.board[x][y] = self.pieces[piece]
-#         self.available_pieces.remove(piece)
-
-#     def get_best_move(self, piece):
-#         best_score = -math.inf
-#         best_move = None
-#         for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
-#             self.make_move(move, piece)
-#             score = self.minimax(0, False, -math.inf, math.inf)
-#             self.undo_move(move, piece)
-#             if score > best_score:
-#                 best_score = score
-#                 best_move = move
-#         return best_move
-
-#     def minimax(self, depth, is_maximizing, alpha, beta, max_depth=3):
-#         if depth >= max_depth or self.is_winner():
-#             return self.evaluate_board(is_maximizing)
-#         if not any(None in row for row in self.board):
-#             return 0
-
-#         if is_maximizing:
-#             max_eval = -math.inf
-#             for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
-#                 for piece in self.available_pieces:
-#                     self.make_move(move, piece)
-#                     eval = self.minimax(depth + 1, False, alpha, beta, max_depth)
-#                     self.undo_move(move, piece)
-#                     max_eval = max(max_eval, eval)
-#                     alpha = max(alpha, eval)
-#                     if beta <= alpha:
-#                         break
-#             return max_eval
-#         else:
-#             min_eval = math.inf
-#             for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
-#                 for piece in self.available_pieces:
-#                     self.make_move(move, piece)
-#                     eval = self.minimax(depth + 1, True, alpha, beta, max_depth)
-#                     self.undo_move(move, piece)
-#                     min_eval = min(min_eval, eval)
-#                     beta = min(beta, eval)
-#                     if beta <= alpha:
-#                         break
-#             return min_eval
-
-#     def undo_move(self, position, piece):
-#         x, y = position
-#         self.board[x][y] = None
-#         self.available_pieces.add(piece)
-
-#     def available_pieces_to_string(self):
-#         return {self.piece_to_string(self.pieces[piece]) for piece in self.available_pieces}
-
-#     def string_to_piece(self, piece_str):
-#         for piece, attributes in self.pieces.items():
-#             if self.piece_to_string(attributes) == piece_str:
-#                 return piece
-#         return None
-
-#     def evaluate_board(self, is_maximizing):
-#         if self.is_winner():
-#             return 1 if is_maximizing else -1
-#         return 0
-
-#     def get_best_piece(self):
-#         best_piece = None
-#         best_piece_score = math.inf
-#         for piece in self.available_pieces:
-#             piece_score = self.simulate_best_move(piece)
-#             if piece_score < best_piece_score:
-#                 best_piece_score = piece_score
-#                 best_piece = piece
-#         return best_piece
-
-#     def simulate_best_move(self, piece):
-#         best_score = math.inf
-#         for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
-#             self.make_move(move, piece)
-#             if self.is_winner():
-#                 self.undo_move(move, piece)
-#                 return -1
-#             score = self.minimax(0, False, -math.inf, math.inf)
-#             self.undo_move(move, piece)
-#             best_score = min(best_score, score)
-#         return best_score
-
-#     def play(self):
-#         current_player = "human"
-#         selected_piece = None
-
-#         while True:
-#             self.display_board()
-#             available_piece_strings = self.available_pieces_to_string()
-#             if current_player == "human":
-#                 if selected_piece is not None:
-#                     x = int(input("Select row (0-3): "))
-#                     y = int(input("Select column (0-3): "))
-#                     self.make_move((x, y), selected_piece)
-#                     if self.is_winner():
-#                         self.display_board()
-#                         print("Human wins!")
-#                         break
-#                 selected_piece_str = input(f"Select a piece for AI from available pieces {available_piece_strings}: ")
-#                 selected_piece = self.string_to_piece(selected_piece_str)
-#                 current_player = "AI"
-#             else:
-#                 move = self.get_best_move(selected_piece)
-#                 self.make_move(move, selected_piece)
-#                 print(f"AI placed piece {self.piece_to_string(self.pieces[selected_piece])} at position {move}")
-#                 if self.is_winner():
-#                     self.display_board()
-#                     print("AI wins!")
-#                     break
-#                 selected_piece = self.get_best_piece()  # AI selects a piece for the human
-#                 print(f"AI selected piece {self.piece_to_string(self.pieces[selected_piece])} for human to place")
-#                 current_player = "human"
-
-# if __name__ == "__main__":
-#     game = QuartoGame()
-#     game.play()
-
-
-
-import random
-import math
-import csv
 import numpy as np
+import random
+import tkinter as tk
+from tkinter import messagebox, Toplevel, Listbox, Button
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from collections import deque
 
-class QuartoGame:
+class Piece:
+    def __init__(self, color, shape, height, hole):
+        self.color = color
+        self.shape = shape
+        self.height = height
+        self.hole = hole
+
+    def __repr__(self):
+        return f"{self.color}{self.shape}{self.height}{self.hole}"
+
+class Board:
     def __init__(self):
         self.board = [[None for _ in range(4)] for _ in range(4)]
-        self.pieces = self.initialize_pieces()
-        self.available_pieces = set(self.pieces.keys())
-        self.csv_file = 'quarto_moves.csv'
-        self.q_table_file = 'q_table.csv'
-        self.initialize_csv()
 
-    def initialize_pieces(self):
-        pieces = {}
-        piece_id = 0
-        for color in [0, 1]:  # 0: Light, 1: Dark
-            for shape in [0, 1]:  # 0: Square, 1: Circle
-                for height in [0, 1]:  # 0: Short, 1: Tall
-                    for surface in [0, 1]:  # 0: Solid, 1: Hollow
-                        pieces[piece_id] = (color, shape, height, surface)
-                        piece_id += 1
-        return pieces
+    def place_piece(self, row, col, piece):
+        self.board[row][col] = piece
 
-    def initialize_csv(self):
-        with open(self.csv_file, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(['Piece', 'Row', 'Column'])
-
-    def log_move(self, piece, position):
-        piece_str = self.piece_to_string(self.pieces[piece])
-        row, column = position
-        with open(self.csv_file, mode='a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow([piece_str, row, column])
-
-    def piece_to_string(self, piece):
-        if piece is None:
-            return "    "
-        color, shape, height, surface = piece
-        color_str = "L" if color == 0 else "D"
-        shape_str = "S" if shape == 0 else "C"
-        height_str = "S" if height == 0 else "T"
-        surface_str = "S" if surface == 0 else "H"
-        return f"{color_str}{shape_str}{height_str}{surface_str}"
-
-    def display_board(self):
-        print("    0     1     2     3")
-        print("  +-----+-----+-----+-----+")
-        for i, row in enumerate(self.board):
-            row_str = " | ".join([self.piece_to_string(cell) for cell in row])
-            print(f"{i} | {row_str} |")
-            print("  +-----+-----+-----+-----+")
-
-    def is_winner(self):
-        # Check rows, columns and diagonals for a winning condition
+    def check_win(self):
+        # 縦・横・斜めで特徴が揃っているかをチェック
         for i in range(4):
             if self.check_line([self.board[i][j] for j in range(4)]) or \
                self.check_line([self.board[j][i] for j in range(4)]):
                 return True
-        if self.check_line([self.board[i][i] for i in range(4)]) or \
-           self.check_line([self.board[i][3-i] for i in range(4)]):
-            return True
-        return False
+        return self.check_line([self.board[i][i] for i in range(4)]) or \
+               self.check_line([self.board[i][3 - i] for i in range(4)])
 
     def check_line(self, line):
-        if None in line:
-            return False
-        for i in range(4):
-            if all(p[i] == line[0][i] for p in line):
+        """ 特徴が揃っているかを確認 """
+        for attr in ['color', 'shape', 'height', 'hole']:
+            values = [getattr(piece, attr) for piece in line if piece is not None]
+            if len(values) == 4 and all(v == values[0] for v in values):
                 return True
         return False
 
-    def make_move(self, position, piece):
-        x, y = position
-        self.board[x][y] = self.pieces[piece]
-        self.available_pieces.remove(piece)
+class QuartoGame:
+    def __init__(self):
+        self.board = Board()
+        self.pieces = self.create_pieces()
+        self.current_piece = None
 
-    def get_best_move(self, piece):
-        best_score = -math.inf
-        best_move = None
-        for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
-            self.make_move(move, piece)
-            score = self.minimax(0, False, -math.inf, math.inf)
-            self.undo_move(move, piece)
-            if score > best_score:
-                best_score = score
-                best_move = move
-        return best_move
+    def create_pieces(self):
+        pieces = []
+        for color in ['L', 'D']:
+            for shape in ['S', 'C']:
+                for height in ['S', 'T']:
+                    for hole in ['S', 'H']:
+                        pieces.append(Piece(color, shape, height, hole))
+        return pieces
 
-    def minimax(self, depth, is_maximizing, alpha, beta, max_depth=3):
-        if depth >= max_depth or self.is_winner():
-            return self.evaluate_board(is_maximizing)
-        if not any(None in row for row in self.board):
-            return 0
-
-        if is_maximizing:
-            max_eval = -math.inf
-            for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
-                for piece in self.available_pieces:
-                    self.make_move(move, piece)
-                    eval = self.minimax(depth + 1, False, alpha, beta, max_depth)
-                    self.undo_move(move, piece)
-                    max_eval = max(max_eval, eval)
-                    alpha = max(alpha, eval)
-                    if beta <= alpha:
-                        break
-            return max_eval
-        else:
-            min_eval = math.inf
-            for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
-                for piece in self.available_pieces:
-                    self.make_move(move, piece)
-                    eval = self.minimax(depth + 1, True, alpha, beta, max_depth)
-                    self.undo_move(move, piece)
-                    min_eval = min(min_eval, eval)
-                    beta = min(beta, eval)
-                    if beta <= alpha:
-                        break
-            return min_eval
-
-    def undo_move(self, position, piece):
-        x, y = position
-        self.board[x][y] = None
-        self.available_pieces.add(piece)
-
-    def available_pieces_to_string(self):
-        return {self.piece_to_string(self.pieces[piece]) for piece in self.available_pieces}
-
-    def string_to_piece(self, piece_str):
-        for piece, attributes in self.pieces.items():
-            if self.piece_to_string(attributes) == piece_str:
-                return piece
+    def select_piece_for_opponent(self):
+        if self.pieces:
+            piece = random.choice(self.pieces)
+            self.pieces.remove(piece)
+            return piece
         return None
 
-    def evaluate_board(self, is_maximizing):
-        if self.is_winner():
-            return 1 if is_maximizing else -1
-        return 0
+    def select_piece_from_remaining(self, index):
+        """残っているコマからインデックスでコマを選び、リストから削除します"""
+        if 0 <= index < len(self.pieces):
+            piece = self.pieces[index]
+            del self.pieces[index]  # 選択したコマをリストから削除
+            return piece
+        return None
 
-    def get_best_piece(self):
-<<<<<<< HEAD
-        best_piece = None
-        best_piece_score = math.inf
-        for piece in self.available_pieces:
-            piece_score = self.simulate_best_move(piece)
-            if piece_score < best_piece_score:
-                best_piece_score = piece_score
-                best_piece = piece
-        return best_piece
+class DQN(nn.Module):
+    def __init__(self, input_dim, output_dim):
+        super(DQN, self).__init__()
+        self.fc1 = nn.Linear(input_dim, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, output_dim)
 
-    def simulate_best_move(self, piece):
-        best_score = math.inf
-        for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
-            self.make_move(move, piece)
-            if self.is_winner():
-                self.undo_move(move, piece)
-                return -1
-            score = self.minimax(0, False, -math.inf, math.inf)
-            self.undo_move(move, piece)
-            best_score = min(best_score, score)
-        return best_score
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        return self.fc3(x)
 
-    def q_learning(self, alpha=0.1, gamma=0.9, epsilon=0.1, episodes=50000, eval_interval=1000, target_win_rate=0.9, eval_games=100):
-        q_table = {}
+class DQNAgent:
+    def __init__(self, state_size, action_size):
+        self.state_size = state_size
+        self.action_size = action_size
+        self.memory = deque(maxlen=2000)
+        self.gamma = 0.95
+        self.epsilon = 1.0
+        self.epsilon_min = 0.01
+        self.epsilon_decay = 0.995
+        self.model = DQN(state_size, action_size)
+        self.target_model = DQN(state_size, action_size)
+        self.update_target_model()
+        self.optimizer = optim.Adam(self.model.parameters(), lr=0.001)
 
-        def get_q(state, action):
-            return q_table.get((state, action), 0.0)
+    def update_target_model(self):
+        self.target_model.load_state_dict(self.model.state_dict())
 
-        for episode in range(episodes):
-            self.__init__()
-            state = self.get_state()
-            while True:
-                if random.uniform(0, 1) < epsilon:
-                    piece = random.choice(list(self.available_pieces))
-                    move = random.choice([(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None])
-                else:
-                    piece, move = self.get_best_action(state, q_table)
+    def remember(self, state, action, reward, next_state, done):
+        self.memory.append((state, action, reward, next_state, done))
 
-                self.make_move(move, piece)
-                next_state = self.get_state()
-                reward = 1 if self.is_winner() else 0
+    def act(self, state):
+        if np.random.rand() <= self.epsilon:
+            return random.randrange(self.action_size)
+        act_values = self.model(torch.FloatTensor(state))
+        return torch.argmax(act_values).item()
 
-                old_q = get_q(state, (piece, move))
-                next_max_q = max([get_q(next_state, (next_piece, next_move)) for next_piece in self.available_pieces for next_move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]], default=0)
+    def replay(self, batch_size):
+        minibatch = random.sample(self.memory, batch_size)
+        for state, action, reward, next_state, done in minibatch:
+            target = reward
+            if not done:
+                target = (reward + self.gamma *
+                          torch.max(self.target_model(torch.FloatTensor(next_state))).item())
+            target_f = self.model(torch.FloatTensor(state))
+            target_f[action] = target
+            self.model.zero_grad()
+            loss = nn.MSELoss()(target_f, self.model(torch.FloatTensor(state)))
+            loss.backward()
+            self.optimizer.step()
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
 
-                new_q = old_q + alpha * (reward + gamma * next_max_q - old_q)
-                q_table[(state, (piece, move))] = new_q
+class QuartoGUI:
+    def __init__(self, game, agent):
+        self.game = game
+        self.agent = agent
+        self.root = tk.Tk()
+        self.root.title("Quarto Game")
+        self.create_board()
+        self.player_turn = True  # プレイヤーのターンから始める
+        self.next_piece = self.ai_selects_piece_for_player()  # AIが最初にプレイヤーのコマを選ぶ
+        self.show_starting_piece()  # 最初のコマを表示
 
-                if self.is_winner() or not any(None in row for row in self.board):
-                    break
+    def create_board(self):
+        self.buttons = [[None for _ in range(4)] for _ in range(4)]
+        for row in range(4):
+            for col in range(4):
+                button = tk.Button(self.root, text=" ", width=10, height=5,
+                                   command=lambda r=row, c=col: self.on_click(r, c))
+                button.grid(row=row, column=col)
+                self.buttons[row][col] = button
 
-                state = next_state
+    def show_starting_piece(self):
+        messagebox.showinfo("Starting Piece", f"Your starting piece is: {self.next_piece}")
 
-            if episode % eval_interval == 0:
-                win_rate = self.evaluate_q_table(q_table, eval_games)
-                print(f"Episode {episode}, Win Rate: {win_rate}")
-                if win_rate >= target_win_rate:
-                    break
-
-        self.save_q_table_to_csv(q_table)
-
-    def evaluate_q_table(self, q_table, games):
-        wins = 0
-        for _ in range(games):
-            self.__init__()
-            state = self.get_state()
-            while True:
-                piece, move = self.get_best_action(state, q_table)
-                self.make_move(move, piece)
-                if self.is_winner():
-                    wins += 1
-                    break
-                if not any(None in row for row in self.board):
-                    break
-                state = self.get_state()
-        return wins / games
-
-    def get_best_action(self, state, q_table):
-        best_q = -math.inf
-        best_action = None
-        for piece in self.available_pieces:
-            for move in [(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None]:
-                q_value = q_table.get((state, (piece, move)), 0)
-                if q_value > best_q:
-                    best_q = q_value
-                    best_action = (piece, move)
-        if best_action is None:
-            piece = random.choice(list(self.available_pieces))
-            move = random.choice([(x, y) for x in range(4) for y in range(4) if self.board[x][y] is None])
-            return piece, move
-        return best_action
-
-    def save_q_table_to_csv(self, q_table):
-        with open(self.q_table_file, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(['State', 'Piece', 'Move', 'Q-Value'])
-            for (state, (piece, move)), q_value in q_table.items():
-                writer.writerow([state, piece, move, q_value])
-
-    def get_state(self):
-        return tuple(tuple(row) for row in self.board)
-
-    def play_ai_vs_ai(self, num_games=1):
-        for _ in range(num_games):
-            self.__init__()
-            state = self.get_state()
-            while True:
-                piece, move = self.get_best_piece(), self.get_best_move(self.get_best_piece())
-                self.make_move(move, piece)
-                self.log_move(piece, move)
-                if self.is_winner() or not any(None in row for row in self.board):
-                    break
-                state = self.get_state()
-            self.display_board()
-game = QuartoGame()
-# game.q_learning()
-
-
-game.play_ai_vs_ai()
-=======
-        best_score = -math.inf
-        best_piece = None
-        for piece in self.available_pieces:
-            score = self.evaluate_piece(piece)
-            if score > best_score:
-                best_score = score
-                best_piece = piece
-        return best_piece
-
-    def evaluate_piece(self, piece):
-        # Simple heuristic for piece evaluation
-        # Can be customized to be more sophisticated
-        return random.random()
-
-    def play(self):
-        current_player = "human"
-        selected_piece = None
-
-        while True:
-            self.display_board()
-            available_piece_strings = self.available_pieces_to_string()
-            if current_player == "human":
-                if selected_piece is not None:
-                    x = int(input("Select row (0-3): "))
-                    y = int(input("Select column (0-3): "))
-                    self.make_move((x, y), selected_piece)
-                    if self.is_winner():
-                        self.display_board()
-                        print("Human wins!")
-                        break
-                selected_piece_str = input(f"Select a piece for AI from available pieces {available_piece_strings}: ")
-                selected_piece = self.string_to_piece(selected_piece_str)
-                current_player = "AI"
+    def on_click(self, row, col):
+        if self.game.board.board[row][col] is None and self.player_turn:
+            # プレイヤーが選んだ位置にコマを置く
+            self.game.board.place_piece(row, col, self.next_piece)
+            self.buttons[row][col]["text"] = str(self.next_piece)
+            
+            if self.game.board.check_win():
+                messagebox.showinfo("Game Over", "You Win!")
+                self.root.quit()
             else:
-                move = self.get_best_move(selected_piece)
-                self.make_move(move, selected_piece)
-                print(f"AI placed piece {self.piece_to_string(self.pieces[selected_piece])} at position {move}")
-                if self.is_winner():
-                    self.display_board()
-                    print("AI wins!")
-                    break
-                selected_piece = self.get_best_piece()  # AI selects a piece for the human
-                print(f"AI selected piece {self.piece_to_string(self.pieces[selected_piece])} for human to place")
-                current_player = "human"
->>>>>>> fa851eec9fdf94ff133695998c39cb51e5d5952e
+                self.player_turn = False
+                self.agent_turn()  # AIのターンを開始
 
+    def ai_selects_piece_for_player(self):
+        """AIがプレイヤーのために次に置くコマを選ぶ"""
+        piece = self.game.select_piece_for_opponent()
+        return piece
+
+    def player_selects_piece_for_ai(self):
+        """プレイヤーがAIのために次のコマを選択するためのリストボックスを表示"""
+        piece_window = Toplevel(self.root)
+        piece_window.title("Select a piece for AI")
+        
+        listbox = Listbox(piece_window, selectmode="single")
+        for i, piece in enumerate(self.game.pieces):
+            listbox.insert(i, str(piece))
+        listbox.pack()
+
+        def on_select():
+            selected_index = listbox.curselection()
+            if selected_index:
+                piece_index = selected_index[0]
+                piece = self.game.select_piece_from_remaining(piece_index)
+                piece_window.destroy()  # 選択後ウィンドウを閉じる
+                self.next_piece = piece  # 選択したコマを次に使うコマに設定
+
+                # AIが選択したコマを配置する
+                self.place_ai_piece()
+
+        Button(piece_window, text="Select", command=on_select).pack()
+
+    def place_ai_piece(self):
+        # AIのターンで、選択したコマを盤面に配置
+        row, col = self.ai_decides_position()  # AIが置く位置を決定
+        if self.game.board.board[row][col] is None:
+            self.game.board.place_piece(row, col, self.next_piece)
+            self.buttons[row][col]["text"] = str(self.next_piece)
+
+            if self.game.board.check_win():
+                messagebox.showinfo("Game Over", "AI Wins!")
+                self.root.quit()
+            else:
+                self.player_turn = True  # プレイヤーのターンに戻す
+                self.next_piece = self.ai_selects_piece_for_player()  # 再度AIがプレイヤーのためのコマを選ぶ]
+                messagebox.showinfo("AI's Turn", f"AI has selected the piece: {self.next_piece}")
+
+    def ai_decides_position(self):
+        """AIが配置する位置をランダムに決定する"""
+        empty_positions = [(r, c) for r in range(4) for c in range(4) if self.game.board.board[r][c] is None]
+        return random.choice(empty_positions) if empty_positions else (None, None)
+
+    def agent_turn(self):
+        """AIのターンを開始"""
+        self.player_selects_piece_for_ai()
+
+    def run(self):
+        self.root.mainloop()
+
+if __name__ == "__main__":
+    game = QuartoGame()
+    agent = DQNAgent(state_size=16, action_size=16)
+    gui = QuartoGUI(game, agent)
+    gui.run()
