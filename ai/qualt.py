@@ -323,6 +323,7 @@ class QuartoGame:
         return 0
 
     def get_best_piece(self):
+<<<<<<< HEAD
         best_piece = None
         best_piece_score = math.inf
         for piece in self.available_pieces:
@@ -441,4 +442,50 @@ game = QuartoGame()
 
 
 game.play_ai_vs_ai()
+=======
+        best_score = -math.inf
+        best_piece = None
+        for piece in self.available_pieces:
+            score = self.evaluate_piece(piece)
+            if score > best_score:
+                best_score = score
+                best_piece = piece
+        return best_piece
+
+    def evaluate_piece(self, piece):
+        # Simple heuristic for piece evaluation
+        # Can be customized to be more sophisticated
+        return random.random()
+
+    def play(self):
+        current_player = "human"
+        selected_piece = None
+
+        while True:
+            self.display_board()
+            available_piece_strings = self.available_pieces_to_string()
+            if current_player == "human":
+                if selected_piece is not None:
+                    x = int(input("Select row (0-3): "))
+                    y = int(input("Select column (0-3): "))
+                    self.make_move((x, y), selected_piece)
+                    if self.is_winner():
+                        self.display_board()
+                        print("Human wins!")
+                        break
+                selected_piece_str = input(f"Select a piece for AI from available pieces {available_piece_strings}: ")
+                selected_piece = self.string_to_piece(selected_piece_str)
+                current_player = "AI"
+            else:
+                move = self.get_best_move(selected_piece)
+                self.make_move(move, selected_piece)
+                print(f"AI placed piece {self.piece_to_string(self.pieces[selected_piece])} at position {move}")
+                if self.is_winner():
+                    self.display_board()
+                    print("AI wins!")
+                    break
+                selected_piece = self.get_best_piece()  # AI selects a piece for the human
+                print(f"AI selected piece {self.piece_to_string(self.pieces[selected_piece])} for human to place")
+                current_player = "human"
+>>>>>>> fa851eec9fdf94ff133695998c39cb51e5d5952e
 
