@@ -1,7 +1,5 @@
 import numpy as np
 import random
-import tkinter as tk
-from tkinter import messagebox, Toplevel, Listbox, Button
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -17,6 +15,15 @@ class Piece:
     def __repr__(self):
         return f"{self.color}{self.shape}{self.height}{self.hole}"
 
+    def encode(self):
+        """ピースの特徴を4ビットのベクトルとしてエンコード"""
+        return [
+            1 if self.color == 'D' else 0,
+            1 if self.shape == 'C' else 0,
+            1 if self.height == 'T' else 0,
+            1 if self.hole == 'H' else 0
+        ]
+
 class Board:
     def __init__(self):
         self.board = [[None for _ in range(4)] for _ in range(4)]
@@ -25,7 +32,6 @@ class Board:
         self.board[row][col] = piece
 
     def check_win(self):
-        # 縦・横・斜めで特徴が揃っているかをチェック
         for i in range(4):
             if self.check_line([self.board[i][j] for j in range(4)]) or \
                self.check_line([self.board[j][i] for j in range(4)]):
@@ -34,18 +40,19 @@ class Board:
                self.check_line([self.board[i][3 - i] for i in range(4)])
 
     def check_line(self, line):
-        """ 特徴が揃っているかを確認 """
         for attr in ['color', 'shape', 'height', 'hole']:
             values = [getattr(piece, attr) for piece in line if piece is not None]
             if len(values) == 4 and all(v == values[0] for v in values):
                 return True
         return False
 
+    def get_empty_positions(self):
+        return [(row, col) for row in range(4) for col in range(4) if self.board[row][col] is None]
+
 class QuartoGame:
     def __init__(self):
         self.board = Board()
         self.pieces = self.create_pieces()
-        self.current_piece = None
 
     def create_pieces(self):
         pieces = []
@@ -56,20 +63,20 @@ class QuartoGame:
                         pieces.append(Piece(color, shape, height, hole))
         return pieces
 
-    def select_piece_for_opponent(self):
-        if self.pieces:
-            piece = random.choice(self.pieces)
-            self.pieces.remove(piece)
-            return piece
-        return None
+    def reset(self):
+        self.board = Board()
+        self.pieces = self.create_pieces()
 
-    def select_piece_from_remaining(self, index):
-        """残っているコマからインデックスでコマを選び、リストから削除します"""
-        if 0 <= index < len(self.pieces):
-            piece = self.pieces[index]
-            del self.pieces[index]  # 選択したコマをリストから削除
-            return piece
-        return None
+    def get_encoded_state(self):
+        encoded_state = []
+        for row in range(4):
+            for col in range(4):
+                piece = self.board.board[row][col]
+                if piece is None:
+                    encoded_state.extend([0, 0, 0, 0])
+                else:
+                    encoded_state.extend(piece.encode())
+        return encoded_state
 
 class DQN(nn.Module):
     def __init__(self, input_dim, output_dim):
@@ -114,110 +121,81 @@ class DQNAgent:
         for state, action, reward, next_state, done in minibatch:
             target = reward
             if not done:
+                # ターゲットネットワークからの出力をdetachで取り出す
                 target = (reward + self.gamma *
-                          torch.max(self.target_model(torch.FloatTensor(next_state))).item())
+                          torch.max(self.target_model(torch.FloatTensor(next_state))).detach().item())
+            
+            # Qネットワークの予測値
             target_f = self.model(torch.FloatTensor(state))
+            
+            # 行動サイズに合わせた出力の形状を確認
+            target_f = target_f.view(-1)  # 1次元に変換
+            
+            # 正しいインデックスにターゲット値を設定
             target_f[action] = target
+            
+            # 損失計算とバックプロパゲーション
             self.model.zero_grad()
-            loss = nn.MSELoss()(target_f, self.model(torch.FloatTensor(state)))
+            output = self.model(torch.FloatTensor(state)).view(-1)
+            loss = nn.MSELoss()(output, target_f)
             loss.backward()
             self.optimizer.step()
+        
+        # ε減少
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-class QuartoGUI:
-    def __init__(self, game, agent):
-        self.game = game
-        self.agent = agent
-        self.root = tk.Tk()
-        self.root.title("Quarto Game")
-        self.create_board()
-        self.player_turn = True  # プレイヤーのターンから始める
-        self.next_piece = self.ai_selects_piece_for_player()  # AIが最初にプレイヤーのコマを選ぶ
-        self.show_starting_piece()  # 最初のコマを表示
+    def train_agents(self, agent1, agent2, game, num_episodes=1000, batch_size=32, target_update_freq=10):
+        for e in range(num_episodes):
+            game.reset()
+            state = game.get_encoded_state()
+            state = np.reshape(state, [1, self.state_size])
+            done = False
+            agent1_turn = True
 
-    def create_board(self):
-        self.buttons = [[None for _ in range(4)] for _ in range(4)]
-        for row in range(4):
-            for col in range(4):
-                button = tk.Button(self.root, text=" ", width=10, height=5,
-                                   command=lambda r=row, c=col: self.on_click(r, c))
-                button.grid(row=row, column=col)
-                self.buttons[row][col] = button
+            while not done:
+                agent = agent1 if agent1_turn else agent2
+                action = agent.act(state)
+                row, col = divmod(action, 4)
+                piece = random.choice(game.pieces)  # ランダムなピースを選択
+                game.board.place_piece(row, col, piece)
 
-    def show_starting_piece(self):
-        messagebox.showinfo("Starting Piece", f"Your starting piece is: {self.next_piece}")
+                if game.board.check_win():
+                    reward1, reward2 = (1, -1) if agent1_turn else (-1, 1)
+                    done = True
+                elif not game.board.get_empty_positions():
+                    reward1 = reward2 = 0  # 引き分けの場合の報酬
+                    done = True
+                else:
+                    reward1 = reward2 = -0.01  # 通常のターンの少額のペナルティ
+                    agent1_turn = not agent1_turn  # ターンを交代
 
-    def on_click(self, row, col):
-        if self.game.board.board[row][col] is None and self.player_turn:
-            # プレイヤーが選んだ位置にコマを置く
-            self.game.board.place_piece(row, col, self.next_piece)
-            self.buttons[row][col]["text"] = str(self.next_piece)
-            
-            if self.game.board.check_win():
-                messagebox.showinfo("Game Over", "You Win!")
-                self.root.quit()
-            else:
-                self.player_turn = False
-                self.agent_turn()  # AIのターンを開始
+                next_state = game.get_encoded_state()
+                next_state = np.reshape(next_state, [1, self.state_size])
 
-    def ai_selects_piece_for_player(self):
-        """AIがプレイヤーのために次に置くコマを選ぶ"""
-        piece = self.game.select_piece_for_opponent()
-        return piece
+                if agent1_turn:
+                    agent1.remember(state, action, reward1, next_state, done)
+                else:
+                    agent2.remember(state, action, reward2, next_state, done)
 
-    def player_selects_piece_for_ai(self):
-        """プレイヤーがAIのために次のコマを選択するためのリストボックスを表示"""
-        piece_window = Toplevel(self.root)
-        piece_window.title("Select a piece for AI")
-        
-        listbox = Listbox(piece_window, selectmode="single")
-        for i, piece in enumerate(self.game.pieces):
-            listbox.insert(i, str(piece))
-        listbox.pack()
+                state = next_state
 
-        def on_select():
-            selected_index = listbox.curselection()
-            if selected_index:
-                piece_index = selected_index[0]
-                piece = self.game.select_piece_from_remaining(piece_index)
-                piece_window.destroy()  # 選択後ウィンドウを閉じる
-                self.next_piece = piece  # 選択したコマを次に使うコマに設定
+                if done:
+                    print(f"Episode {e+1}/{num_episodes} - Agent1 Reward: {reward1}, Agent2 Reward: {reward2}")
+                    if e % target_update_freq == 0:
+                        agent1.update_target_model()
+                        agent2.update_target_model()
+                    break
 
-                # AIが選択したコマを配置する
-                self.place_ai_piece()
-
-        Button(piece_window, text="Select", command=on_select).pack()
-
-    def place_ai_piece(self):
-        # AIのターンで、選択したコマを盤面に配置
-        row, col = self.ai_decides_position()  # AIが置く位置を決定
-        if self.game.board.board[row][col] is None:
-            self.game.board.place_piece(row, col, self.next_piece)
-            self.buttons[row][col]["text"] = str(self.next_piece)
-
-            if self.game.board.check_win():
-                messagebox.showinfo("Game Over", "AI Wins!")
-                self.root.quit()
-            else:
-                self.player_turn = True  # プレイヤーのターンに戻す
-                self.next_piece = self.ai_selects_piece_for_player()  # 再度AIがプレイヤーのためのコマを選ぶ]
-                messagebox.showinfo("AI's Turn", f"AI has selected the piece: {self.next_piece}")
-
-    def ai_decides_position(self):
-        """AIが配置する位置をランダムに決定する"""
-        empty_positions = [(r, c) for r in range(4) for c in range(4) if self.game.board.board[r][c] is None]
-        return random.choice(empty_positions) if empty_positions else (None, None)
-
-    def agent_turn(self):
-        """AIのターンを開始"""
-        self.player_selects_piece_for_ai()
-
-    def run(self):
-        self.root.mainloop()
+            if len(agent1.memory) > batch_size:
+                agent1.replay(batch_size)
+            if len(agent2.memory) > batch_size:
+                agent2.replay(batch_size)
 
 if __name__ == "__main__":
     game = QuartoGame()
-    agent = DQNAgent(state_size=16, action_size=16)
-    gui = QuartoGUI(game, agent)
-    gui.run()
+    state_size = 4 * 4 * 4
+    action_size = 16
+    agent1 = DQNAgent(state_size=state_size, action_size=action_size)
+    agent2 = DQNAgent(state_size=state_size, action_size=action_size)
+    agent1.train_agents(agent1, agent2, game)
