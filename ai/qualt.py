@@ -145,6 +145,14 @@ class DQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
+    def save_model(self, filepath):
+        torch.save(self.model.state_dict(), filepath)
+        torch.save(self.target_model.state_dict(), filepath + "_target")
+
+    def load_model(self, filepath):
+        self.model.load_state_dict(torch.load(filepath))
+        self.target_model.load_state_dict(torch.load(filepath + "_target"))
+
     def train_agents(self, agent1, agent2, game, num_episodes=1000, batch_size=32, target_update_freq=10):
         for e in range(num_episodes):
             game.reset()
@@ -192,10 +200,20 @@ class DQNAgent:
             if len(agent2.memory) > batch_size:
                 agent2.replay(batch_size)
 
-if __name__ == "__main__":
-    game = QuartoGame()
-    state_size = 4 * 4 * 4
-    action_size = 16
-    agent1 = DQNAgent(state_size=state_size, action_size=action_size)
-    agent2 = DQNAgent(state_size=state_size, action_size=action_size)
-    agent1.train_agents(agent1, agent2, game)
+
+
+
+
+# if __name__ == "__main__":
+#     game = QuartoGame()
+#     state_size = 4 * 4 * 4
+#     action_size = 16
+#     agent1 = DQNAgent(state_size=state_size, action_size=action_size)
+#     agent2 = DQNAgent(state_size=state_size, action_size=action_size)
+#     agent1.train_agents(agent1, agent2, game)
+
+#     # モデルの保存
+#     agent1.save_model("agent1_model.pth")
+#     agent2.save_model("agent2_model.pth")
+
+

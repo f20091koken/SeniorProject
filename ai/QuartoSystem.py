@@ -9,6 +9,10 @@ class Piece:
         self.height = height
         self.hole = hole
 
+    def attributes(self):
+        # 属性をまとめてリストで返す
+        return [self.color, self.shape, self.height, self.hole]
+
     def __repr__(self):
         return f"{self.color}{self.shape}{self.height}{self.hole}"
 
@@ -33,9 +37,23 @@ class Board:
             if len(values) == 4 and all(v == values[0] for v in values):
                 return True
         return False
+    
+    def get_state(self):
+    # ボードの状態を1次元のnumpy配列として取得
+        state = []
+        for row in self.board:
+            for cell in row:
+                state.append(1 if cell is not None else 0)
+        return np.array(state, dtype=np.float32)
 
 class QuartoGame:
     def __init__(self):
+        self.board = Board()
+        self.pieces = self.create_pieces()
+        self.current_piece = None
+        self.reset_game()
+
+    def reset_game(self):
         self.board = Board()
         self.pieces = self.create_pieces()
         self.current_piece = None
@@ -48,6 +66,10 @@ class QuartoGame:
                     for hole in ['S', 'H']:
                         pieces.append(Piece(color, shape, height, hole))
         return pieces
+    
+    def check_draw(self):
+        # 残りのピースがなくなった場合の判定
+        return len(self.pieces) == 0 and not self.board.check_win()
 
     def select_piece_for_opponent(self):
         if self.pieces:
@@ -62,10 +84,3 @@ class QuartoGame:
             del self.pieces[index]
             return piece
         return None
-
-    def get_state(self):
-        state = []
-        for row in self.board.board:
-            state += [1 if piece else 0 for piece in row]
-        state += [1 if piece else 0 for piece in self.pieces]
-        return np.array(state, dtype=np.float32)
