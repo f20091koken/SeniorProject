@@ -1,40 +1,105 @@
+'''
+Board class for the game of TicTacToe.
+Default board size is 3x3.
+Board data:
+  1=white(O), -1=black(X), 0=empty
+  first dim is column , 2nd is row:
+     pieces[0][0] is the top left square,
+     pieces[2][0] is the bottom left square,
+Squares are stored and manipulated as (x,y) tuples.
+
+Author: Evgeny Tyurin, github.com/evg-tyurin
+Date: Jan 5, 2018.
+
+Based on the board for the game of Othello by Eric P. Nichols.
+
+'''
+# from bkcharts.attributes import color
 class Board():
-    def __init__(self):
+
+    # list of all 8 directions on the board, as (x,y) offsets
+    __directions = [(1,1),(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1),(0,1)]
+
+    def __init__(self, n=3):
         "Set up initial board configuration."
-        self.board = np.zeros((4, 4), dtype=int)
-        self.pieces = self.create_pieces()
 
-    def create_pieces(self):
-        pieces = []
-        for color in ['L', 'D']:
-            for shape in ['S', 'C']:
-                for height in ['S', 'T']:
-                    for hole in ['S', 'H']:
-                        pieces.append(Piece(color, shape, height, hole))
-        return pieces
+        self.n = n
+        # Create the empty board array.
+        self.pieces = [None]*self.n
+        for i in range(self.n):
+            self.pieces[i] = [0]*self.n
 
-    def place_piece(self, row, col, piece):
-        self.board[row][col] = piece
+    # add [][] indexer syntax to the Board
+    def __getitem__(self, index): 
+        return self.pieces[index]
 
-    def get_empty_positions(self):
-        empty_positions = []
-        for row in range(4):
-            for col in range(4):
-                if self.board[row][col] == 0:
-                    empty_positions.append((row, col))
-        return empty_positions
+    def get_legal_moves(self, color):
+        """Returns all the legal moves for the given color.
+        (1 for white, -1 for black)
+        @param color not used and came from previous version.        
+        """
+        moves = set()  # stores the legal moves.
 
-    def check_win(self):
-        # Check rows, columns and diagonals for a win
-        for i in range(4):
-            if self.check_line(self.board[i, :]) or self.check_line(self.board[:, i]):
+        # Get all the empty squares (color==0)
+        for y in range(self.n):
+            for x in range(self.n):
+                if self[x][y]==0:
+                    newmove = (x,y)
+                    moves.add(newmove)
+        return list(moves)
+
+    def has_legal_moves(self):
+        for y in range(self.n):
+            for x in range(self.n):
+                if self[x][y]==0:
+                    return True
+        return False
+    
+    def is_win(self, color):
+        """Check whether the given player has collected a triplet in any direction; 
+        @param color (1=white,-1=black)
+        """
+        win = self.n
+        # check y-strips
+        for y in range(self.n):
+            count = 0
+            for x in range(self.n):
+                if self[x][y]==color:
+                    count += 1
+            if count==win:
                 return True
-        if self.check_line(self.board.diagonal()) or self.check_line(np.fliplr(self.board).diagonal()):
+        # check x-strips
+        for x in range(self.n):
+            count = 0
+            for y in range(self.n):
+                if self[x][y]==color:
+                    count += 1
+            if count==win:
+                return True
+        # check two diagonal strips
+        count = 0
+        for d in range(self.n):
+            if self[d][d]==color:
+                count += 1
+        if count==win:
             return True
+        count = 0
+        for d in range(self.n):
+            if self[d][self.n-d-1]==color:
+                count += 1
+        if count==win:
+            return True
+        
         return False
 
-    def check_line(self, line):
-        # Check if all elements in the line are the same and not empty
-        if np.all(line == line[0]) and line[0] != 0:
-            return True
-        return False
+    def execute_move(self, move, color):
+        """Perform the given move on the board; 
+        color gives the color pf the piece to play (1=white,-1=black)
+        """
+
+        (x,y) = move
+
+        # Add the piece to the empty square.
+        assert self[x][y] == 0
+        self[x][y] = color
+

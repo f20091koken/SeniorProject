@@ -6,13 +6,15 @@ import random
 import numpy as np
 import math
 import sys
-sys.path.append('../..')
+current_dir = os.path.dirname(os.path.abspath(__file__),)
+parent_dir = os.path.abspath(os.path.join(current_dir, "../.."))
+sys.path.append(parent_dir)
 from utils import *
 from NeuralNet import NeuralNet
 
 import argparse
 
-from .OthelloNNet import OthelloNNet as onnet
+from QuartoNNet import QuartoNNet as onnet
 
 args = dotdict({
     'lr': 0.001,
