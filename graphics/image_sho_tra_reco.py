@@ -189,7 +189,7 @@ def process_image(filename):
         os.makedirs(cropped_dir, exist_ok=True)
 
         # モデルの読み込み
-        model = load_model('hogehoge.h5')
+        model = load_model('piece_classifier_model_fold_3.h5')
 
         # 認識結果を格納する4x4の配列を初期化
         board = np.full((4, 4), None)
