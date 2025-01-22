@@ -7,7 +7,13 @@ from matplotlib import pyplot as plt
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 
-# 前のコードの関数は同じなので省略（create_overlay から perspectiveTransform まで）
+board = np.full((4, 4), None)
+
+def decimal_to_binary_str(decimal_num):
+    """10進数を4桁の二進数文字列に変換"""
+    binary = bin(decimal_num)[2:]  # '0b'プレフィックスを除去
+    return binary.zfill(4)  # 4桁になるように0埋め
+
 def create_overlay(shape):
     overlay = np.zeros(shape, dtype=np.uint8)
     height, width = shape[:2]
@@ -183,7 +189,18 @@ def process_image(filename):
         os.makedirs(cropped_dir, exist_ok=True)
 
         # モデルの読み込み
-        model = load_model('piece_classifier_model_fold_3.h5')
+        model = load_model('hogehoge.h5')
+
+        # 認識結果を格納する4x4の配列を初期化
+        board = np.full((4, 4), None)
+
+        # 画像番号から配列のインデックスへのマッピング
+        index_mapping = {
+            1: (0,0), 2: (0,1), 3: (0,2), 4: (0,3),
+            5: (1,0), 6: (1,1), 7: (1,2), 8: (1,3),
+            9: (2,0), 10: (2,1), 11: (2,2), 12: (2,3),
+            13: (3,0), 14: (3,1), 15: (3,2), 16: (3,3)
+        }
 
         print("\n=== 画像認識結果 ===")
         print("位置: 認識結果")
@@ -201,13 +218,23 @@ def process_image(filename):
 
             # 画像認識の実行
             prepared_img = load_and_prepare_image(cropped_filename)
-            prediction = model.predict(prepared_img, verbose=0)  # verboseを0に設定して余分な出力を抑制
+            prediction = model.predict(prepared_img, verbose=0)
             predicted_class = np.argmax(prediction[0])
             confidence = prediction[0][predicted_class]
             
+            # 認識結果を二進数に変換
+            binary_result = decimal_to_binary_str(predicted_class)
+            
+            # 配列に格納
+            row, col = index_mapping[i]
+            board[row][col] = binary_result
+            
             # 結果の出力
-            print(f"位置 {i:2d}: クラス {predicted_class} (確信度: {confidence:.2f})")
+            print(f"位置 {i:2d}: クラス {predicted_class} (確信度: {confidence:.2f}) -> 二進数: {binary_result}")
 
+        print("\n=== 配列の内容 ===")
+        for row in board:
+            print(row)
         print("=================")
 
     else:
