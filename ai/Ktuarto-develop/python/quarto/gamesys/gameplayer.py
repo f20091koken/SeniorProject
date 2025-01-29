@@ -34,14 +34,17 @@ class ManualAi(base_ai.BaseAi):
         #手入力処理
         while(box_index is None):
             
-            attribure = [int(i) for i in input('choice >>').split()]
+            # in_str = [int(i) for i in input('choice >>').split()]
+            attribute = [int(i) for i in input('choice >>').split()]
 
             # 属性に一致するインデックスを探す
             for idx, piece in enumerate(in_box.piecelist):
-                if piece.param.tolist() == attribure:
+                print(f"Checking piece {idx}: {piece.param.tolist()} against attribute {attribute}")
+                if piece.param.tolist() == attribute:
                     in_str = [idx]
                     break
             else:
+                print("No such piece")
                 continue
 
             #範囲外の数字を入力

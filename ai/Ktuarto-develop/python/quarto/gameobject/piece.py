@@ -2,14 +2,15 @@ import numpy as np
 
 class Piece:
     def __init__(self, color, shape, top, height):
-        #色,形,穴,高さ
-        self.param = np.array([color,shape,top,height])
-        
+            
         #文字列で格納された値を0,1に変換する
         c   = 1 if color  == 1      else 0
         s   = 1 if shape  == 1      else 0
         t   = 1 if top    == 1      else 0
         h   = 1 if height == 1      else 0
+
+        #色,形,穴,高さ
+        self.param = np.array([c,s,t,h])
 
         #0,1からインデックスを作成する
         self.index = (c<<0) + (s<<1) + (t<<2) + (h<<3)
