@@ -450,28 +450,19 @@ class MonteBranchInfo:
 
         return result
     
-    def evaluate_position(self, branch):
-        """
-        盤面の評価関数
-        return: 評価値（高いほど有利な状態）
-        """
+    def evaluate_line_risk(self, branch):
         score = 0
-        
-        # 1. ライン評価
         for line_values in branch.board.line_info:
+            # 3つ同じ属性が揃っているラインは非常に危険
             for attr_value in line_values:
-                if abs(attr_value) == 2:
-                    score += 10
-                elif abs(attr_value) == 3:
-                    score += 30
-        
-        # 2. 中央支配評価
-        center_positions = [(1,1), (1,2), (2,1), (2,2)]
-        for left, top in center_positions:
-            if branch.board.getBoard(left, top) is not None:
-                score += 5
-        
-        # 3. 選択肢の自由度評価
+                if abs(attr_value) == 3:
+                    score -= 50  # 大きなペナルティ
+                elif abs(attr_value) == 2:
+                    score -= 20  # 中程度のペナルティ
+        return score
+    
+    def evaluate_piece_danger(self, branch):
+        score = 0
         if branch.piece is not None:
             dangerous_positions = 0
             for left in range(4):
@@ -481,25 +472,44 @@ class MonteBranchInfo:
                         temp_board.setBoard(left, top, branch.piece)
                         if temp_board.isQuarto():
                             dangerous_positions += 1
-            score -= dangerous_positions * 20
+            score -= dangerous_positions * 30
+        return score
+    
+    # 属性バランス評価：盤面全体での属性分布に注目
+    def evaluate_attribute_balance(self, branch):
+        score = 0
         
-        # 4. 属性バランス評価
-        # 同じ属性が集中しすぎていないかをチェック
+        # 盤面上の全駒の属性を集計
+        attr_sums = np.zeros(4)  # [色, 形, 穴, 高さ]
         piece_count = 0
-        attr_sums = [0, 0, 0, 0]  # 色、形、穴、高さの各属性の合計
+        
         for left in range(4):
             for top in range(4):
                 piece = branch.board.getBoard(left, top)
                 if piece is not None:
                     piece_count += 1
-                    for i, attr in enumerate(piece.param):
-                        attr_sums[i] += attr
+                    attr_sums += piece.param
         
-        # 属性の偏りにペナルティ
-        for attr_sum in attr_sums:
-            if piece_count > 0:
-                balance = abs(attr_sum / piece_count - 0.5)  # 0.5が理想的なバランス
-                score -= balance * 15
+        if piece_count > 0:
+            # 各属性の出現割合を計算
+            attr_ratios = attr_sums / piece_count
+            
+            # 極端な偏り（0.25や0.75から大きく外れる）にペナルティ
+            for ratio in attr_ratios:
+                if abs(ratio - 0.5) > 0.25:  # 極端な偏り
+                    score -= 25
+        
+        return score
+
+
+
+    def evaluate_position(self, branch):
+        score = 0
+        
+        # 各評価要素を重み付けして合算
+        score += self.evaluate_line_risk(branch)
+        score += self.evaluate_piece_danger(branch)
+        score += self.evaluate_attribute_balance(branch)
         
         return score
     
