@@ -4,6 +4,8 @@ from . import gameplayerinfo
 import numpy as np
 from ..gameutil import util
 import time
+import json
+from datetime import datetime
 
 class GameMain:
     """
@@ -36,6 +38,7 @@ class GameMain:
     """
 
     def __init__(self, player0, player1):
+        self.board_state_handler = BoardStateHandler()
         self.board = board.HiTechBoard([])    #空配列を渡すことでボードをNoneで初期化
         self.box = box.Box(board=self.board)
         self.choicepiece = None
@@ -104,6 +107,9 @@ class GameMain:
         self.left = presult['left']
         self.top = presult['top']
         self.board.setBoard(self.left, self.top, self.choicepiece)    #駒をセット
+
+        self.board_state_handler.save_board_state(self.board)
+
         self.call = presult['call']     #コールを取得
 
         #コールチェック
@@ -166,6 +172,45 @@ class GameMain:
     def drawPutPos(self):
         util.p.print('put '+str(self.left)+','+str(self.top))
         util.p.print('')
+
+class BoardStateHandler:
+    def __init__(self, json_path='board_state.json'):
+        self.json_path = json_path
+        self.previous_state = None
+        
+    def board_to_state_format(self, board):
+        """Convert board object to 4x4 state format"""
+        state = []
+        for i in range(4):
+            row = []
+            for j in range(4):
+                piece = board.getBoard(i, j)
+                if piece is None:
+                    row.append("----")
+                else:
+                    # Convert piece parameters to string format
+                    piece_str = ''.join(map(str, piece.toNumList()))
+                    row.append(piece_str)
+            state.append(row)
+        return state
+
+    def save_board_state(self, board):
+        """Save current and previous board state to JSON file"""
+        current_state = self.board_to_state_format(board)
+        
+        # Prepare data structure
+        state_data = {
+            "timestamp": datetime.now().isoformat(),
+            "current_state": current_state,
+            "previous_state": self.previous_state if self.previous_state else current_state
+        }
+        
+        # Save to JSON file
+        with open(self.json_path, 'w') as f:
+            json.dump(state_data, f, indent=2)
+        
+        # Update previous state
+        self.previous_state = current_state
 
 def winningPercentageRun(gamenum, p0=None, p1=None):
     start = time.time()
