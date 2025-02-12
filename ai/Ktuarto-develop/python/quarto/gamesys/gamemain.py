@@ -285,4 +285,3 @@ def winningPercentageRun(gamenum, p0=None, p1=None):
 def winningPercentageRunMultiprocess(args):
     result = winningPercentageRun(args[0],args[1],args[2])
     return result
-

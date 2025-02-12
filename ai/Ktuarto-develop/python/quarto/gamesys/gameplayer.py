@@ -1,6 +1,6 @@
 from ..ailogic import base_ai
 from ..gameobject import board, box, piece
-
+from ..board_recognition.quartocamera import QuartoCamera
 class GamePlayer:
     def __init__(self, ai=None):
         
@@ -72,8 +72,8 @@ class ManualAi(base_ai.BaseAi):
 
         #手入力処理
         while(res_left is None):
-            """"
-            image_recognition_result=image_recognition_result()
+            camera = QuartoCamera(camera_index=0)
+            image_recognition_result=camera.detect_piece_addition()
             print(image_recognition_result)
             print('コマの配置場所があっていたら「cキー」、間違っていたら「rキー」を入力してください')
             while True:
@@ -82,13 +82,14 @@ class ManualAi(base_ai.BaseAi):
                     break
                 elif key == 'r':  # rが入力されたら修正処理
                     image_recognition_result = input('修正する駒の配置を入力してください')
-            """
+                    break
+            
 
 
-            in_str = [int(i) for i in input('put(left top) >>').split()]
-            """"
+            #in_str = [int(i) for i in input('put(left top) >>').split()]
+            
             in_str = [int(i) for i in image_recognition_result.split()]
-            """
+            
 
             #範囲外の数字を入力
             if not (0 <= in_str[0] and in_str[0] <= 3 and 0 <= in_str[1] and in_str[1] <= 3):continue
