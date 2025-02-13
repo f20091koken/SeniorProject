@@ -6,6 +6,8 @@ from ..gameutil import util
 import time
 import json
 from datetime import datetime
+from typing import Dict, List, Optional, Any, Tuple
+from ..gameobject import board, piece
 
 class GameMain:
     """
@@ -38,6 +40,7 @@ class GameMain:
     """
 
     def __init__(self, player0, player1):
+        self.game_state = GameStateManager()
         self.board_state_handler = BoardStateHandler()
         self.board = board.HiTechBoard([])    #空配列を渡すことでボードをNoneで初期化
         self.box = box.Box(board=self.board)
@@ -66,6 +69,12 @@ class GameMain:
             util.p.print('引き分け')
         else:
             util.p.print('Player'+str(self.winner)+'の勝利')
+        
+
+        self.game_state.record_game_end(
+        winner=self.winner,
+        final_board=self.board
+    )
         
         return self.winner
     
@@ -113,7 +122,13 @@ class GameMain:
         self.call = presult['call']     #コールを取得
 
         #コールチェック
-        self.checkCall()
+        self.game_state.record_put_action(
+        player=self.turn,
+        piece=self.choicepiece,
+        position=(self.left, self.top),
+        board_obj=self.board,
+        call=self.call
+    )
     
     def choicePhase(self):
         ts = time.time()    #処理時間計測用
@@ -131,6 +146,13 @@ class GameMain:
         
         #コールチェック
         self.checkCall()
+
+        self.game_state.record_choice_action(
+        player=self.turn,
+        chosen_piece=self.choicepiece,
+        available_pieces=self.box.piecelist,
+        call=self.call
+    )
     
     def checkCall(self):
         #宣言のチェック
@@ -211,6 +233,151 @@ class BoardStateHandler:
         
         # Update previous state
         self.previous_state = current_state
+
+
+
+import json
+from datetime import datetime
+from typing import Dict, List, Optional, Any, Tuple
+from ..gameobject import board, piece
+
+class GameStateManager:
+    """
+    ゲームの状態を管理し、GUI連携のためのJSON出力を行うクラス
+    """
+    def __init__(self, json_path: str = 'game_state.json'):
+        self.json_path = json_path
+        self.current_turn = 0
+        self.move_history: List[Dict[str, Any]] = []
+        self.last_action: Optional[Dict[str, Any]] = None
+        
+    def format_piece(self, p: Optional[piece.Piece]) -> str:
+        """駒の情報を文字列形式に変換"""
+        if p is None:
+            return "----"
+        # NumPy配列を通常のリストに変換してから文字列化
+        return ''.join(map(str, p.toNumList().tolist()))
+
+    def board_to_state(self, board_obj: board.HiTechBoard) -> List[List[str]]:
+        """ボードの状態を2次元配列形式に変換"""
+        state = []
+        for i in range(4):
+            row = []
+            for j in range(4):
+                p = board_obj.getBoard(i, j)
+                row.append(self.format_piece(p))
+            state.append(row)
+        return state
+
+    def record_choice_action(self, player: int, chosen_piece: piece.Piece, 
+                           available_pieces: List[piece.Piece], call: str) -> None:
+        """
+        選択アクション（choice）の記録
+        """
+        action = {
+            "type": "choice",
+            "timestamp": datetime.now().isoformat(),
+            "player": player,
+            "chosen_piece": self.format_piece(chosen_piece),
+            "available_pieces": [self.format_piece(p) for p in available_pieces],
+            "call": call
+        }
+        self.last_action = action
+        self.move_history.append(action)
+        self._save_state()
+
+    def record_put_action(self, player: int, piece: piece.Piece, 
+                         position: Tuple[int, int], board_obj: board.HiTechBoard,
+                         call: str) -> None:
+        """
+        配置アクション（put）の記録
+        """
+        action = {
+            "type": "put",
+            "timestamp": datetime.now().isoformat(),
+            "player": player,
+            "piece": self.format_piece(piece),
+            "position": position,
+            "board_state": self.board_to_state(board_obj),
+            "call": call
+        }
+        self.last_action = action
+        self.move_history.append(action)
+        self._save_state()
+
+    def record_game_end(self, winner: Optional[int], final_board: board.HiTechBoard) -> None:
+        """
+        ゲーム終了状態の記録
+        """
+        end_state = {
+            "type": "game_end",
+            "timestamp": datetime.now().isoformat(),
+            "winner": winner,
+            "final_board_state": self.board_to_state(final_board),
+            "total_moves": len(self.move_history)
+        }
+        self.move_history.append(end_state)
+        self._save_state()
+
+    def _convert_to_serializable(self, obj):
+        """
+        オブジェクトをJSON シリアライズ可能な形式に変換
+        """
+        if hasattr(obj, 'tolist'):  # NumPy array の場合
+            return obj.tolist()
+        elif isinstance(obj, (list, tuple)):
+            return [self._convert_to_serializable(item) for item in obj]
+        elif isinstance(obj, dict):
+            return {key: self._convert_to_serializable(value) for key, value in obj.items()}
+        return obj
+
+    def _save_state(self) -> None:
+        """
+        現在の状態をJSONファイルに保存
+        """
+        state_data = {
+            "last_update": datetime.now().isoformat(),
+            "current_turn": self.current_turn,
+            "last_action": self.last_action,
+            "move_history": self.move_history
+        }
+        
+        # データを変換してからシリアライズ
+        serializable_data = self._convert_to_serializable(state_data)
+        
+        with open(self.json_path, 'w', encoding='utf-8') as f:
+            json.dump(serializable_data, f, indent=2, ensure_ascii=False)
+
+    def get_current_state(self) -> Dict[str, Any]:
+        """
+        現在の状態を取得
+        """
+        if not self.move_history:
+            return {
+                "status": "game_not_started",
+                "current_turn": self.current_turn
+            }
+        
+        last_move = self.move_history[-1]
+        
+        if last_move["type"] == "game_end":
+            return {
+                "status": "game_ended",
+                "winner": last_move["winner"],
+                "final_board_state": last_move["final_board_state"]
+            }
+        
+        return {
+            "status": "in_progress",
+            "current_turn": self.current_turn,
+            "last_action": self.last_action
+        }
+
+    def get_move_history(self) -> List[Dict[str, Any]]:
+        """
+        移動履歴を取得
+        """
+        return self.move_history.copy()
 
 def winningPercentageRun(gamenum, p0=None, p1=None):
     start = time.time()
