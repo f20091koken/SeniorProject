@@ -248,7 +248,7 @@ class GameStateManager:
     def __init__(self, json_path: str = 'game_state.json'):
         self.json_path = json_path
         self.current_turn = 0
-        self.move_history: List[Dict[str, Any]] = []
+        #self.move_history: List[Dict[str, Any]] = []
         self.last_action: Optional[Dict[str, Any]] = None
         
     def format_piece(self, p: Optional[piece.Piece]) -> str:
@@ -283,7 +283,7 @@ class GameStateManager:
             "call": call
         }
         self.last_action = action
-        self.move_history.append(action)
+        #self.move_history.append(action)
         self._save_state()
 
     def record_put_action(self, player: int, piece: piece.Piece, 
@@ -302,7 +302,7 @@ class GameStateManager:
             "call": call
         }
         self.last_action = action
-        self.move_history.append(action)
+        #self.move_history.append(action)
         self._save_state()
 
     def record_game_end(self, winner: Optional[int], final_board: board.HiTechBoard) -> None:
@@ -316,7 +316,7 @@ class GameStateManager:
             "final_board_state": self.board_to_state(final_board),
             "total_moves": len(self.move_history)
         }
-        self.move_history.append(end_state)
+        #self.move_history.append(end_state)
         self._save_state()
 
     def _convert_to_serializable(self, obj):
@@ -339,7 +339,7 @@ class GameStateManager:
             "last_update": datetime.now().isoformat(),
             "current_turn": self.current_turn,
             "last_action": self.last_action,
-            "move_history": self.move_history
+            #"move_history": self.move_history
         }
         
         # データを変換してからシリアライズ
@@ -358,14 +358,14 @@ class GameStateManager:
                 "current_turn": self.current_turn
             }
         
-        last_move = self.move_history[-1]
+        #last_move = self.move_history[-1]
         
-        if last_move["type"] == "game_end":
-            return {
-                "status": "game_ended",
-                "winner": last_move["winner"],
-                "final_board_state": last_move["final_board_state"]
-            }
+        # if last_move["type"] == "game_end":
+        #     return {
+        #         "status": "game_ended",
+        #         "winner": last_move["winner"],
+        #         "final_board_state": last_move["final_board_state"]
+        #     }
         
         return {
             "status": "in_progress",
@@ -373,11 +373,11 @@ class GameStateManager:
             "last_action": self.last_action
         }
 
-    def get_move_history(self) -> List[Dict[str, Any]]:
-        """
-        移動履歴を取得
-        """
-        return self.move_history.copy()
+    # def get_move_history(self) -> List[Dict[str, Any]]:
+    #     """
+    #     移動履歴を取得
+    #     """
+    #     return self.move_history.copy()
 
 def winningPercentageRun(gamenum, p0=None, p1=None):
     start = time.time()
