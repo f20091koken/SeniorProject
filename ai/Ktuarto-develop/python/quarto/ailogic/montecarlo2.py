@@ -451,45 +451,17 @@ class MonteBranchInfo:
         return result
     
     def evaluate_line_risk(self, branch):
-        """
-        ライン形成のリスクを評価
-        """
         score = 0
         for line_values in branch.board.line_info:
+            # 3つ同じ属性が揃っているラインは非常に危険
             for attr_value in line_values:
                 if abs(attr_value) == 3:
-                    score -= 50
+                    score -= 50  # 大きなペナルティ
                 elif abs(attr_value) == 2:
-                    score -= 20
+                    score -= 20  # 中程度のペナルティ
         return score
-
-    def evaluate_attribute_balance(self, branch):
-        """
-        属性のバランスを評価
-        """
-        score = 0
-        piece_count = 0
-        attr_sums = [0, 0, 0, 0]  # 色、形、穴、高さ
-        
-        for left in range(4):
-            for top in range(4):
-                piece = branch.board.getBoard(left, top)
-                if piece is not None:
-                    piece_count += 1
-                    for i, attr in enumerate(piece.param):
-                        attr_sums[i] += attr
-        
-        if piece_count > 0:
-            for attr_sum in attr_sums:
-                balance = abs(attr_sum / piece_count - 0.5)  # 0.5が理想的なバランス
-                score -= balance * 15
-                
-        return score
-
+    
     def evaluate_piece_danger(self, branch):
-        """
-        渡す駒の危険度を評価
-        """
         score = 0
         if branch.piece is not None:
             dangerous_positions = 0
@@ -500,90 +472,114 @@ class MonteBranchInfo:
                         temp_board.setBoard(left, top, branch.piece)
                         if temp_board.isQuarto():
                             dangerous_positions += 1
+            score -= dangerous_positions * 30
+        return score
+    
+    # 属性バランス評価：盤面全体での属性分布に注目
+    def evaluate_attribute_balance(self, branch):
+        score = 0
+        
+        # 盤面上の全駒の属性を集計
+        attr_sums = np.zeros(4)  # [色, 形, 穴, 高さ]
+        piece_count = 0
+        
+        for left in range(4):
+            for top in range(4):
+                piece = branch.board.getBoard(left, top)
+                if piece is not None:
+                    piece_count += 1
+                    attr_sums += piece.param
+        
+        if piece_count > 0:
+            # 各属性の出現割合を計算
+            attr_ratios = attr_sums / piece_count
             
-            # 残り駒数に応じてペナルティを調整
-            remaining_pieces = len(branch.box.piecelist)
-            if remaining_pieces <= 8:
-                danger_multiplier = 2.0
-                score -= dangerous_positions * 30 * danger_multiplier
-            else:
-                score -= dangerous_positions * 30
+            # 極端な偏り（0.25や0.75から大きく外れる）にペナルティ
+            for ratio in attr_ratios:
+                if abs(ratio - 0.5) > 0.25:  # 極端な偏り
+                    score -= 25
         
         return score
 
+
+
     def evaluate_position(self, branch):
-        """
-        盤面の総合評価
-        """
-        # 各評価要素を計算
-        line_risk_score = self.evaluate_line_risk(branch)
-        balance_score = self.evaluate_attribute_balance(branch)
-        danger_score = self.evaluate_piece_danger(branch)
+        score = 0
         
-        # 合算
-        total_score = line_risk_score*0.5+ balance_score*0.3 + danger_score
+        # 各評価要素を重み付けして合算
+        score += self.evaluate_line_risk(branch)
+        score += self.evaluate_piece_danger(branch)
+        score += self.evaluate_attribute_balance(branch)
         
-        # 終盤での評価強化
-        remaining_pieces = len(branch.box.piecelist)
-        if remaining_pieces <= 6:
-            total_score *= 1.2
-        elif remaining_pieces <= 2:
-            total_score *= 1.0
-        
-        return total_score
+        return score
     
     def searchRoute(self):
-        # プレイアウト実行
+        """
+        最善手を探してそのインデックスを返す
+        """
+        #自身が枝の場合、プレイアウト実行
         if(not self.isLeaf):
             endtime = time.time() + self.param.playoutTimelimit
             while(time.time() < endtime):
                 self.playout()
                 if(self.isLeaf):break
         
-        self.simpleLog()
+        #戻り値インデックス 未入力状態 -1
+        returnIndex = -1
+        countmax = -1
         
-        # 勝利確定時の処理
         for i in range(self.branchnum):
             if self.branchList[i].winner == True:
-                return i
+                #勝ち確定のインデックスを返す。
+                returnIndex = i
+                break
+
+            elif self.branchList[i].winner is None:
+                #もっともプレイアウト回数の多い引き分けがあれば格納。（勝ちパターンがあるかもなのでbreakはしないで探索続行）
+                if self.isLeaf:
+                    returnIndex = i
+                elif countmax < self.branchPlayoutCount[i]:
+                    countmax = self.branchPlayoutCount[i]
+                    returnIndex = i
         
-        # branchPlayoutCountがNoneの場合の初期化
-        if self.branchPlayoutCount is None:
-            self.branchPlayoutCount = np.zeros(self.branchnum)
+        #勝利、引き分け手が無いとき、プレイアウトの結果から最有力候補を取得
+        if(returnIndex == -1):
+            if self.isLeaf:
+                returnIndex = 0
+            else:
+                returnIndex = self.branchPlayoutCount.argmax()
+
+        #情報の印字
+        #util.p.print('depth\tplayer\tphase\tpattern\tisLeaf\twinner\ttotal\tcount\twin\tdraw\twinpre\tdrawper\twinucb\tdrawucb')
+        #self.myprint(0)
+        self.simpleLog()
+
+        returnIndex = -1
+        countmax = -1
         
-        # 評価値を計算
+        # ここに評価関数を追加できる
+        # 例：各手の評価値を計算
         evaluations = []
         for i in range(self.branchnum):
-            eval_score = self.evaluate_position(self.branchList[i])
+            eval_score = self.evaluate_position(self.branchList[i])  # 評価関数
             evaluations.append(eval_score)
-    
         
-        # スケーリング：両方の値を0-1の範囲に正規化
-        if self.branchnum > 0:
-            playout_normalized = self.branchPlayoutCount / np.max(self.branchPlayoutCount) if np.max(self.branchPlayoutCount) > 0 else np.zeros(self.branchnum)
-            eval_normalized = np.array(evaluations) / np.max(evaluations) if np.max(evaluations) > 0 else np.zeros(self.branchnum)
+        # プレイアウト回数と評価値を組み合わせた選択
+        for i in range(self.branchnum):
+            if self.branchList[i].winner == True:
+                returnIndex = i
+                break
+            # 評価値を考慮した選択
+            elif self.branchList[i].winner is None:
+                combined_score = (
+                    self.branchPlayoutCount[i] * 0.7 +  # プレイアウトの重み
+                    evaluations[i] * 0.3                # 評価値の重み
+                )
+                if combined_score > countmax:
+                    countmax = combined_score
+                    returnIndex = i
             
-            # 正規化したスコアを組み合わせ
-            combined_scores = (playout_normalized * 0.8) + (eval_normalized * 0.2)
-            
-            returnIndex = -1
-            best_score = float('-inf')
-            
-            for i in range(self.branchnum):
-                if self.branchList[i].winner is None:
-                    if combined_scores[i] > best_score:
-                        best_score = combined_scores[i]
-                        returnIndex = i
-        
-            # 有効な手が見つからない場合
-            if returnIndex == -1:
-                if self.isLeaf:
-                    returnIndex = 0
-                else:
-                    returnIndex = combined_scores.argmax()
-        
         return returnIndex
-
 
     def myprint(self, depth):
         """
