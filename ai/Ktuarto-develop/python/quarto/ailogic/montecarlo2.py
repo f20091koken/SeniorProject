@@ -633,3 +633,4 @@ class MonteBranchInfo:
         
     def simpleLog(self):
         util.p.print(str(self.isLeaf)+' '+str(self.winner)+' '+str(self.branchPlayoutTotal))
+
